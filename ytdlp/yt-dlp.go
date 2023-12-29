@@ -39,18 +39,22 @@ func ytdlp(line string) {
 	slog.Debug("协程任务运行")
 	prefix := util.GetVal("yt-dlp", "saveTo")
 	proxy := util.GetVal("yt-dlp", "proxy")
-	cmd := exec.Command("yt-dlp", "--write-info-json", "--proxy", proxy, "--force-ipv4", "--no-playlist", "-P", prefix, "-o", "%(title)s.%(ext)s", line)
-	slog.Info("yt-dlp命令开始执行", slog.String("命令原文", fmt.Sprint(cmd)), slog.String("文件名", "%(title)s.%(ext)s"))
+	cmd := exec.Command("yt-dlp", "--proxy", proxy, "--no-playlist", "-P", prefix, "-o", "%(title)s.%(ext)s", line)
 	y := new(sql.Ytdlp)
 	y.URL = line
-	y.Status = "失败"
+	y.Status = "下载失败"
 	if name, err := getName(line); err != nil {
 		slog.Warn("获取文件名失败")
 	} else {
+		yt := new(sql.Ytdlp)
+		yt.Name = name
 		y.Name = name
+		if s, _, _ := yt.FindDupByName(); len(s) > 0 {
+			slog.Warn("有可能已经下载过了", slog.String("文件名", name), slog.String("URL", y.URL))
+		}
 	}
 	y.SetOne()
-
+	slog.Info("yt-dlp命令开始执行", slog.String("命令原文", fmt.Sprint(cmd)), slog.String("文件名", y.Name))
 	err := util.ExecCommand(cmd)
 	if err != nil {
 		slog.Warn("yt-dlp命令下载失败", slog.String("命令原文", fmt.Sprint(cmd)), slog.Any("错误原文", err))
@@ -63,10 +67,15 @@ func ytdlp(line string) {
 
 func getName(link string) (string, error) {
 	// cmd := exec.Command("yt-dlp", "--print", "filename", "-o", "%(title)s.%(ext)s", link)
-	cmd := exec.Command("yt-dlp", "--force-ipv4", "--print", "filename", "-o", "%(title)s", link)
+	proxy := "127.0.0.1:7890"
+	//proxy := util.GetVal("yt-dlp", "proxy")
+	cmd := exec.Command("yt-dlp", "--proxy", proxy, "--print", "filename", "-o", "%(title)s", link)
 	fname, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println("err1")
 		return "", err
+	} else {
+		slog.Debug("从命令获取的文件名", slog.String("文件名", string(fname)))
 	}
 	return replace.ForFileName(string(fname)), err
 }
