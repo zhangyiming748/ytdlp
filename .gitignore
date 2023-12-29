@@ -16,3 +16,4 @@ go.work
 *.db
 *.txt
 *.part
+*.info.json

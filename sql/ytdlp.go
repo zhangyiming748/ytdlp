@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"fmt"
 	"gorm.io/gorm"
 	"time"
 )
@@ -25,4 +26,22 @@ func (y *Ytdlp) SetOne() *gorm.DB {
 }
 func (y *Ytdlp) UpdateStatusById() *gorm.DB {
 	return GetEngine().Model(Ytdlp{}).Where("id = ?", y.ID).Update("status", y.Status)
+}
+func (y *Ytdlp) FindDupByName() (Success, Failure, Skip []Ytdlp) {
+	var ys []Ytdlp
+	GetEngine().Table("ytdlps").Where("name = ?", y.Name).Find(&ys)
+	fmt.Println(ys)
+	for _, v := range ys {
+		{
+			switch v.Status {
+			case "下载失败":
+				Failure = append(Failure, v)
+			case "跳过下载":
+				Skip = append(Skip, v)
+			case "下载成功":
+				Success = append(Success, v)
+			}
+		}
+	}
+	return Success, Failure, Skip
 }
