@@ -39,7 +39,7 @@ func ytdlp(line string) {
 	slog.Debug("协程任务运行")
 	prefix := util.GetVal("yt-dlp", "saveTo")
 	proxy := util.GetVal("yt-dlp", "proxy")
-	cmd := exec.Command("yt-dlp", "--proxy", proxy, "--no-playlist", "-P", prefix, "-o", "%(title)s.%(ext)s", line)
+	cmd := exec.Command("yt-dlp", "--write-info-json", "--proxy", proxy, "--force-ipv4", "--no-playlist", "-P", prefix, "-o", "%(title)s.%(ext)s", line)
 	slog.Info("yt-dlp命令开始执行", slog.String("命令原文", fmt.Sprint(cmd)), slog.String("文件名", "%(title)s.%(ext)s"))
 	y := new(sql.Ytdlp)
 	y.URL = line
@@ -63,7 +63,7 @@ func ytdlp(line string) {
 
 func getName(link string) (string, error) {
 	// cmd := exec.Command("yt-dlp", "--print", "filename", "-o", "%(title)s.%(ext)s", link)
-	cmd := exec.Command("yt-dlp", "--print", "filename", "-o", "%(title)s", link)
+	cmd := exec.Command("yt-dlp", "--force-ipv4", "--print", "filename", "-o", "%(title)s", link)
 	fname, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", err
