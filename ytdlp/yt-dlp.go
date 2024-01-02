@@ -1,13 +1,16 @@
 package ytdlp
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/zhangyiming748/ytdlp/replace"
 	"github.com/zhangyiming748/ytdlp/sql"
 	"github.com/zhangyiming748/ytdlp/util"
 	"log/slog"
+	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -67,15 +70,33 @@ func ytdlp(line string) {
 
 func getName(link string) (string, error) {
 	// cmd := exec.Command("yt-dlp", "--print", "filename", "-o", "%(title)s.%(ext)s", link)
-	proxy := "127.0.0.1:7890"
+	proxy := "192.168.1.5:8889"
 	//proxy := util.GetVal("yt-dlp", "proxy")
-	cmd := exec.Command("yt-dlp", "--proxy", proxy, "--print", "filename", "-o", "%(title)s", link)
+	cmd := exec.Command("yt-dlp", "--proxy", proxy, "--write-info-json", "--print", "filename", link)
 	fname, err := cmd.CombinedOutput()
+	jsonName := ""
 	if err != nil {
-		fmt.Println("err1")
+		slog.Warn("从命令获取文件名失败", slog.String("命令原文", fmt.Sprint(cmd)), slog.String("错误原文", err.Error()))
 		return "", err
 	} else {
-		slog.Debug("从命令获取的文件名", slog.String("文件名", string(fname)))
+		name := string(fname)
+		name = strings.Replace(name, "\n", "", 1)
+		jsonName = strings.Replace(name, ".mp4", ".info.json", 1)
+		slog.Debug("从命令获取的文件名", slog.String("文件名", name))
+	}
+	if jsonFile, openErr := os.ReadFile(jsonName); openErr != nil {
+		slog.Warn("根据文件名获取json文件出错")
+	} else {
+		var ph sql.PH
+		if not := json.Unmarshal(jsonFile, &ph); not != nil {
+			slog.Warn("无法解析为ph结构体")
+		} else {
+			phjs := new(sql.Info)
+			phjs.Title = ph.Title
+			phjs.JSON = jsonFile
+			phjs.SetOne()
+		}
+
 	}
 	return replace.ForFileName(string(fname)), err
 }
